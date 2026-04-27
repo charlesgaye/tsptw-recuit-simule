@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Matrices de distance reconstructibles (re-générées à partir des instances)
+data/*_dist.npy
+
+# Sorties de pdflatex
+*.aux
+*.log
+*.toc
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Outils / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

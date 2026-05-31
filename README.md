@@ -2,7 +2,33 @@
 
 Implémentation d'un recuit simulé pour le problème du voyageur de commerce
 avec fenêtres temporelles (TSPTW), réalisée dans le cadre d'un projet
-académique.
+académique (compétition interne de métaheuristiques à CentraleSupélec).
+
+## Résultats clés
+
+- **1ère place** de promotion en compétition interne de métaheuristiques.
+- Sur les instances de validation (`inst1` ~20 villes, `inst2` ~50 villes),
+  la solution optimale fournie avec le sujet est retrouvée systématiquement.
+- Sur l'instance de concours (`inst_concours`, ~100 villes), une solution
+  admissible (sans retard ni avance) est obtenue de façon répétable.
+- Sur `inst3` (~200 villes), aucune solution admissible n'a été atteinte —
+  les meilleurs essais conservent 2 à 3 villes en retard. Documenté dans
+  le rapport.
+
+Configuration finale retenue :
+
+| Paramètre | Valeur |
+|---|---|
+| `T_start` / `T_end` | 5000 / 0.1 |
+| `nb_iterations` | 5 000 000 |
+| `proba_voisinage` (large_swap, block_reverse, scramble, insert_range) | (0, 0.1, 0.75, 0.15) |
+| Pénalités (violation, retard, avance) | (350, 30, 10) |
+
+Voir [`RapportTSPTW.pdf`](RapportTSPTW.pdf) pour l'analyse complète :
+sensibilité aux paramètres, intervalles de confiance sur ~30 runs,
+comparaison avec une approche ACO concurrente, et discussion de l'écart à
+l'optimum publiquement connu sur l'instance de concours (découvert après
+rendu).
 
 ## Structure du dépôt
 
@@ -29,6 +55,26 @@ Python 3.9+ avec `numpy` et `matplotlib`.
 
 ```
 pip install numpy matplotlib
+```
+
+## Reproduire les expériences du rapport
+
+Toutes les commandes ci-dessous fixent une graine pour la reproductibilité.
+Un balayage prend de quelques minutes à plusieurs dizaines de minutes selon
+`--runs` et `--iters` ; pour un essai rapide, réduire `--iters` à 100000.
+
+```
+# Recuit unique sur l'instance de concours, configuration finale
+python main.py --mode run --instance data/inst_concours --iters 5000000 --seed 0
+
+# Balayage des distributions de voisinage (figures de la section sur le voisinage)
+python main.py --mode sweep_p --instance data/inst1 --runs 30 --seed 0
+
+# Balayage des pénalités
+python main.py --mode sweep_pen --instance data/inst1 --runs 30 --seed 0
+
+# Balayage des températures
+python main.py --mode sweep_temp --instance data/inst1 --runs 30 --seed 0
 ```
 
 ## Format d'instance
@@ -111,6 +157,22 @@ curves = experiments.sweep_proba(
 plotting.plot_ci(curves, save_path="ci.png")
 ```
 
+## Note technique — bug détecté après rendu
+
+En relisant la fonction de score après le rendu, j'ai identifié un bug dans
+le calcul de la pénalité d'avance : `duree` est écrasée par `next_start`
+avant le calcul `next_start - duree`, qui vaut donc systématiquement 0.
+Conséquence : `t_avance` est numériquement nul et le terme
+`pen_avance * t_avance` ne contribue jamais au score. Les balayages de
+`pen_avance` rapportés dans `--mode sweep_pen` sont donc en pratique neutres
+sur ce terme.
+
+J'ai choisi de **préserver la version originale** dans
+`scoring.compute_score` pour garder les chiffres traçables au rapport rendu,
+et de fournir une **version corrigée** (`scoring.compute_score_fixed`) à
+titre documentaire. Aucune des expériences du rapport n'utilise la version
+corrigée. Voir aussi la section dédiée du rapport (`ssec:bug-avance`).
+
 ## Notes
 
 - Les matrices de distances sont mises en cache dans `data/<instance>_dist.npy`
@@ -119,10 +181,5 @@ plotting.plot_ci(curves, save_path="ci.png")
   lorsqu'on compare plusieurs configurations, pour éviter que l'état global
   de `np.random` ne diverge entre configurations (cf. note dans le rapport,
   section sur la pénalité d'avance).
-- La fonction `scoring.compute_score` reproduit la fonction utilisée pour
-  les expériences du rapport, qui contient un bug rendant la pénalité
-  d'avance numériquement inactive. Une version corrigée
-  `scoring.compute_score_fixed` est fournie pour référence mais n'est pas
-  utilisée par défaut.
 - Le module `io_utils` reprend la lecture d'instance fournie avec le sujet
   (fichier `scoreEtudiant.py`), réécrite de façon minimale.
